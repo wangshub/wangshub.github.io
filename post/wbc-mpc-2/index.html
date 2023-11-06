@@ -1,0 +1,69 @@
+<!doctype html><html class=no-js lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta http-equiv=x-ua-compatible content="IE=edge"><title>仿人机器人运动控制（2）：模型预测控制（MPC） - Song.W</title><script>(function(e,t){e[t]=e[t].replace("no-js","js")})(document.documentElement,"className")</script><meta name=description content><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=dns-prefetch href=//fonts.googleapis.com><link rel=dns-prefetch href=//fonts.gstatic.com><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Open+Sans:400,400i,700"><link rel=stylesheet href=/css/style.css><link rel="shortcut icon" href=/favicon.ico></head><body class=body><div class="container container--outer"><header class=header><div class="container header__container"><div class="logo logo--mixed"><a class=logo__link href=/ title=Song.W rel=home><div class="logo__item logo__imagebox"><img class=logo__img src=/img/avatar.jpg></div><div class="logo__item logo__text"><div class=logo__title>Song.W</div><div class=logo__tagline>Good News, Everyone!</div></div></a></div><nav class=menu><button class=menu__btn aria-haspopup=true aria-expanded=false tabindex=0>
+<span class=menu__btn-title tabindex=-1>Menu</span></button><ul class=menu__list><li class=menu__item><a class=menu__link href=/post><span class=menu__text>Blog Posts</span></a></li><li class=menu__item><a class=menu__link href=/about><span class=menu__text>About Me</span></a></li></ul></nav></div></header><div class="wrapper flex"><div class=primary><main class=main role=main><article class=post><header class=post__header><h1 class=post__title>仿人机器人运动控制（2）：模型预测控制（MPC）</h1><div class="post__meta meta"><div class="meta__item-datetime meta__item"><svg class="meta__icon icon icon-time" width="16" height="14" viewBox="0 0 30 28"><path d="M15 0C7 0 1 6 1 14s6 14 14 14 14-6 14-14S23 0 15 0zm0 25C9 25 4 20 4 14S9 3 15 3s11 5 11 11-5 11-11 11zm1-18h-2v8.4l6.8 4.4L22 18l-6-3.8V7z"/></svg><time class=meta__text datetime=2023-10-10T21:11:09+08:00>October 10, 2023</time></div><div class="meta__item-categories meta__item"><svg class="meta__icon icon icon-category" width="16" height="16" viewBox="0 0 16 16"><path d="m7 2 1 2h8v11H0V2z"/></svg><span class=meta__text><a class=meta__link href=/categories/robot/ rel=category>Robot</a>, <a class=meta__link href=/categories/python/ rel=category>Python</a></span></div></div></header><div class="content post__content clearfix"><p>推导仿人机器人机器人的动力学模型MPC控制公式与应用等内容，并给出了相应的公式和参考文献。</p><h2 id=简化动力学公式总结回顾>简化动力学公式总结回顾</h2><p>假设：</p><ul><li>（1）机器人质量集中于躯干；</li><li>（2）运动过程中躯干的 roll 角和 pitch 角变化忽略不计；</li></ul><p>存在如下变换 <span class="math display">\[
+\begin{aligned}
+\dot{\boldsymbol{\Theta}} & \approx \boldsymbol{R}_z(\psi)
+\boldsymbol{\omega} \\
+\mathcal{G} \boldsymbol{I} & \approx
+\boldsymbol{R}_z(\psi)_{\mathcal{B}} \boldsymbol{I}
+\boldsymbol{R}_z(\psi)^{\top},
+\end{aligned}
+\tag{14}
+\]</span></p><p>其中</p><ul><li><span class="math inline">\(\dot{\Theta}=\left[\begin{array}{lll}\dot{\phi}
+& \dot{\theta} &
+\dot{\psi}\end{array}\right]^{\top}\)</span>为躯干欧拉角 roll （<span class="math inline">\(\phi\)</span>），pitch（<span class="math inline">\(\theta\)</span>），yaw（<span class="math inline">\(\psi\)</span>）对应的角速度；</li><li><span class="math inline">\(\boldsymbol{R}_z(\psi)\)</span>为全局坐标系下的旋转<span class="math inline">\(\omega\)</span>到局部坐标系下的欧拉角旋转变换矩阵；</li><li><span class="math inline">\({ }_{\mathcal{G}}
+\boldsymbol{I}\)</span> 和 <span class="math inline">\({ }_{\mathcal{B}}
+\boldsymbol{I}\)</span> 分别是从全局和局部坐标系下的惯性张量；</li></ul><p><span class="math display">\[
+\frac{d}{d t}(\boldsymbol{I} \boldsymbol{\omega})=\boldsymbol{I}
+\dot{\boldsymbol{\omega}}+\boldsymbol{\omega} \times(\boldsymbol{I}
+\boldsymbol{\omega}) \approx \boldsymbol{I} \dot{\boldsymbol{\omega}}
+\tag{15}
+\]</span></p><p>通过以上简化，系统的离散动力学可以表示为</p><p><span class="math display">\[
+\mathbf{x}(k+1)=\boldsymbol{A}_k \mathbf{x}(k)+\boldsymbol{B}_k
+\hat{\mathbf{f}}(k)+\hat{\mathbf{g}}
+\tag{16}
+\]</span></p><p>其中</p><p><span class="math display">\[
+\begin{aligned}
+\mathbf{x} & =\left[\begin{array}{llll}
+\boldsymbol{\Theta}^{\top} & \mathbf{p}^{\top} &
+\boldsymbol{\omega}^{\top} & \dot{\mathbf{p}}^{\top}
+\end{array}\right]^{\top}, \\
+\hat{\mathbf{f}} & =\left[\begin{array}{lll}
+\mathbf{f}_1 & \cdots & \mathbf{f}_n
+\end{array}\right]^{\top}, \\
+\hat{\mathbf{g}} & =\left[\begin{array}{llll}
+\mathbf{0}_{1 \times 3} & \mathbf{0}_{1 \times 3} &
+\mathbf{0}_{1 \times 3} & \mathbf{g}^{\top}
+\end{array}\right]^{\top},
+\end{aligned}
+\tag{17}
+\]</span></p><p><span class="math display">\[
+\begin{aligned}
+\boldsymbol{A} & =\left[\begin{array}{cccc}
+\mathbf{1}_{3 \times 3} & \mathbf{0}_{3 \times 3} &
+\boldsymbol{R}_z\left(\psi_k\right) \Delta t & \mathbf{0}_{3 \times
+3} \\
+\mathbf{0}_{3 \times 3} & \mathbf{1}_{3 \times 3} &
+\mathbf{0}_{3 \times 3} & \mathbf{1}_{3 \times 3} \Delta t \\
+\mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} &
+\mathbf{1}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+\mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} &
+\mathbf{0}_{3 \times 3} & \mathbf{1}_{3 \times 3}
+\end{array}\right], \\
+\boldsymbol{B} & =\left[\begin{array}{ccc}
+\mathbf{0}_{3 \times 3} & \cdots & \mathbf{0}_{3 \times 3} \\
+\mathbf{0}_{3 \times 3} & \cdots & \mathbf{0}_{3 \times 3} \\
+\mathcal{G} \boldsymbol{I}^{-1}\left[\mathbf{r}_1\right]_{\times} \Delta
+t & \cdots & { }_{\mathcal{G}}
+\boldsymbol{I}^{-1}\left[\mathbf{r}_n\right]_{\times} \Delta t \\
+\mathbf{1}_{3 \times 3} \Delta t / m & \cdots & \mathbf{1}_{3
+\times 3} \Delta t / m
+\end{array}\right] .
+\end{aligned}
+\tag{18}
+\]</span></p><h2 id=参考文献>参考文献</h2><ul><li>Di Carlo, Jared, et al. “Dynamic locomotion in the mit cheetah 3
+through convex model-predictive control.” 2018 IEEE/RSJ international
+conference on intelligent robots and systems (IROS). IEEE, 2018.</li></ul></div><footer class=post__footer><div class="post__tags tags clearfix"><svg class="tags__badge icon icon-tag" width="16" height="16" viewBox="0 0 32 32"><path d="M32 19c0 1-1 2-1 2L21 31s-1 1-2 1-2-1-2-1L2 16c-1-1-1.4-2-1.4-2S0 12.5.0 11V3C0 1.5.8.8.8.8S1.5.0 3 0h8c1.5.0 3 .6 3 .6S15 1 16 2l15 15s1 1 1 2zM7 10a3 3 0 100-6 3 3 0 000 6z"/></svg><ul class=tags__list><li class=tags__item><a class="tags__link btn" href=/tags/humanoid/ rel=tag>Humanoid</a></li><li class=tags__item><a class="tags__link btn" href=/tags/algorithms/ rel=tag>Algorithms</a></li><li class=tags__item><a class="tags__link btn" href=/tags/motion-control/ rel=tag>Motion Control</a></li></ul></div></footer></article></main><div class="authorbox clearfix"><figure class=authorbox__avatar><img alt="Song.W avatar" src=/img/avatar.jpg class=avatar height=90 width=90></figure><div class=authorbox__header><span class=authorbox__name>About Song.W</span></div><div class=authorbox__description>Song’s Personal blog about everything.</div></div><nav class="pager flex"><div class="pager__item pager__item--prev"><a class=pager__link href=/post/wbc-mpc-1/ rel=prev><span class=pager__subtitle>«&#8201;Previous</span><p class=pager__title>仿人机器人运动控制（1）：简化动力学模型</p></a></div></nav></div><aside class=sidebar><div class="widget-recent widget"><h4 class=widget__title>Recent Posts</h4><div class=widget__content><ul class=widget__list><li class=widget__item><a class=widget__link href=/post/wbc-mpc-2/>仿人机器人运动控制（2）：模型预测控制（MPC）</a></li><li class=widget__item><a class=widget__link href=/post/wbc-mpc-1/>仿人机器人运动控制（1）：简化动力学模型</a></li></ul></div></div><div class="widget-categories widget"><h4 class=widget__title>Categories</h4><div class=widget__content><ul class=widget__list><li class=widget__item><a class=widget__link href=/categories/python/>Python</a></li><li class=widget__item><a class=widget__link href=/categories/robot/>Robot</a></li></ul></div></div><div class="widget-taglist widget"><h4 class=widget__title>Tags</h4><div class=widget__content><a class="widget-taglist__link widget__link btn" href=/tags/algorithms/ title=Algorithms>Algorithms (2)</a>
+<a class="widget-taglist__link widget__link btn" href=/tags/humanoid/ title=Humanoid>Humanoid (2)</a>
+<a class="widget-taglist__link widget__link btn" href=/tags/motion-control/ title="Motion Control">Motion Control (2)</a></div></div></aside></div><footer class=footer><div class="container footer__container flex"><div class=footer__copyright>&copy; 2023 Song.W.
+<span class=footer__copyright-credits>Generated with <a href=https://gohugo.io/ rel="nofollow noopener" target=_blank>Hugo</a> and <a href=https://github.com/Vimux/Mainroad/ rel="nofollow noopener" target=_blank>Mainroad</a> theme.</span></div></div></footer></div><script async defer src=/js/menu.js></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML" async></script></body></html>
