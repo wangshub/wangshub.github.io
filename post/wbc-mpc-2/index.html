@@ -32,7 +32,40 @@ Programming, QP）,QP的标准形式表示为</p><p><span class="math display">\
 <span id=cb1-10><a href=#cb1-10 aria-hidden=true tabindex=-1></a>b <span class=op>=</span> array([<span class=fl>1.</span>])</span>
 <span id=cb1-11><a href=#cb1-11 aria-hidden=true tabindex=-1></a></span>
 <span id=cb1-12><a href=#cb1-12 aria-hidden=true tabindex=-1></a>x <span class=op>=</span> solve_qp(P, q, G, h, A, b, solver<span class=op>=</span><span class=st>&quot;osqp&quot;</span>)</span>
-<span id=cb1-13><a href=#cb1-13 aria-hidden=true tabindex=-1></a><span class=bu>print</span>(<span class=ss>f&quot;QP solution: x = </span><span class=sc>{</span>x<span class=sc>}</span><span class=ss>&quot;</span>)</span></code></pre></div><h2 id=参考文献>参考文献</h2><ul><li>Di Carlo, Jared, et al. “Dynamic locomotion in the mit cheetah 3
+<span id=cb1-13><a href=#cb1-13 aria-hidden=true tabindex=-1></a><span class=bu>print</span>(<span class=ss>f&quot;QP solution: x = </span><span class=sc>{</span>x<span class=sc>}</span><span class=ss>&quot;</span>)</span></code></pre></div><p>关于如何 MPC 推导为 QP 形式，强烈推荐 <a href="https://space.bilibili.com/230105574/channel/collectiondetail?sid=1814749">DR_CAN
+老师的讲解</a>，下文只记录推导后的结论。</p><h2 id=模型预测控制器求解流程>模型预测控制器求解流程</h2><p>考虑线性时不变系统离散形式的状态空间方程一般形式</p><p><span class="math display">\[
+\boldsymbol{x}_{k+1} = \boldsymbol{A}\boldsymbol{x}_k +
+\boldsymbol{B}\boldsymbol{u}_k
+\tag{4}
+\]</span></p><p>其代价函数 <span class="math inline">\(J\)</span></p><p><span class="math display">\[
+J=\frac{1}{2} \boldsymbol{x}_{\left[k+N_{\mathrm{p}} \mid
+k\right]}^{\mathrm{T}} \boldsymbol{S}
+\boldsymbol{x}_{\left[k+N_{\mathrm{p}} \mid k\right]}+\frac{1}{2}
+\sum_{i=0}^{N_{\mathrm{p}}-1}\left[\boldsymbol{x}_{[k+i \mid
+k]}^{\mathrm{T}} \boldsymbol{Q} \boldsymbol{x}_{[k+i \mid
+k]}+\boldsymbol{u}_{[k+i \mid k]}^{\mathrm{T}} \boldsymbol{R}
+\boldsymbol{u}_{[k+i \mid k]}\right]
+\tag{5}
+\]</span></p><p>考虑系统线性约束条件</p><p><span class="math display">\[
+\begin{gathered}
+\mathcal{M}_{[k+i]_{m \times n}} x_{[k+i]_{n \times
+1}}+\mathcal{F}_{[k+i]_{m \times p}} u_{[k+i]_{p \times 1}} \leqslant
+\beta_{[k+i]_{m \times 1}}, \quad i=0,1,2, \cdots, N_{\mathrm{p}}-1 \\
+\mathcal{M}_{N \mathrm{p}_{l \times n}}
+\boldsymbol{x}_{\left[k+N_{\mathrm{p}}\right]_{n \times 1}} \leqslant
+\boldsymbol{\beta}_{N \mathrm{p}_{l \times 1}}
+\end{gathered}
+\tag{6}
+\]</span></p><p>其中各项变量解释如下：</p><ul><li><span class="math inline">\(\boldsymbol{A}\)</span>为状态矩阵，<span class="math inline">\(\boldsymbol{B}\)</span>为控制矩阵，与系统本身相关，需要靠参数辨识获取；</li><li><span class="math inline">\(\boldsymbol{S}=\left[\begin{array}{ccc}s_1 &
+\cdots & 0 \\ \vdots & \ddots & \vdots \\ 0 & \cdots
+& s_n\end{array}\right], \quad s_1, s_2, \cdots, s_n \geqslant
+0\)</span>，表示系统末端代价；</li><li><span class="math inline">\(Q=\left[\begin{array}{ccc}q_1 &
+\cdots & 0 \\ \vdots & \ddots & \vdots \\ 0 & \cdots
+& q_n\end{array}\right], \quad q_1, q_2, \cdots, q_n \geqslant
+0\)</span>，表示系统运行代价；</li><li><span class="math inline">\(\boldsymbol{R}=\left[\begin{array}{ccc}r_1 &
+\cdots & 0 \\ \vdots & \ddots & \vdots \\ 0 & \cdots
+& r_p\end{array}\right], \quad r_1, r_2, \cdots,
+r_p>0\)</span>，标识系统控制量代价；</li><li>公式（6）表示通用的约束条件，约束每个时刻输入控制量与状态变量的组合；</li></ul><figure><img src=wbc_controller.png alt="图1 WBC控制器设计"><figcaption aria-hidden=true>图1 WBC控制器设计</figcaption></figure><h2 id=参考文献>参考文献</h2><ul><li>Di Carlo, Jared, et al. “Dynamic locomotion in the mit cheetah 3
 through convex model-predictive control.” 2018 IEEE/RSJ international
 conference on intelligent robots and systems (IROS). IEEE, 2018.</li></ul></div><footer class=post__footer><div class="post__tags tags clearfix"><svg class="tags__badge icon icon-tag" width="16" height="16" viewBox="0 0 32 32"><path d="M32 19c0 1-1 2-1 2L21 31s-1 1-2 1-2-1-2-1L2 16c-1-1-1.4-2-1.4-2S0 12.5.0 11V3C0 1.5.8.8.8.8S1.5.0 3 0h8c1.5.0 3 .6 3 .6S15 1 16 2l15 15s1 1 1 2zM7 10a3 3 0 100-6 3 3 0 000 6z"/></svg><ul class=tags__list><li class=tags__item><a class="tags__link btn" href=/tags/humanoid/ rel=tag>Humanoid</a></li><li class=tags__item><a class="tags__link btn" href=/tags/algorithms/ rel=tag>Algorithms</a></li><li class=tags__item><a class="tags__link btn" href=/tags/motion-control/ rel=tag>Motion Control</a></li></ul></div></footer></article></main><div class="authorbox clearfix"><figure class=authorbox__avatar><img alt="Song.W avatar" src=/img/avatar.jpg class=avatar height=90 width=90></figure><div class=authorbox__header><span class=authorbox__name>About Song.W</span></div><div class=authorbox__description>Song’s Personal blog about everything.</div></div><nav class="pager flex"><div class="pager__item pager__item--prev"><a class=pager__link href=/post/wbc-mpc-1/ rel=prev><span class=pager__subtitle>«&#8201;Previous</span><p class=pager__title>仿人机器人运动控制（1）：简化动力学模型</p></a></div></nav></div><aside class=sidebar><div class="widget-recent widget"><h4 class=widget__title>Recent Posts</h4><div class=widget__content><ul class=widget__list><li class=widget__item><a class=widget__link href=/post/wbc-mpc-2/>仿人机器人运动控制（2）：模型预测控制（MPC）</a></li><li class=widget__item><a class=widget__link href=/post/wbc-mpc-1/>仿人机器人运动控制（1）：简化动力学模型</a></li></ul></div></div><div class="widget-categories widget"><h4 class=widget__title>Categories</h4><div class=widget__content><ul class=widget__list><li class=widget__item><a class=widget__link href=/categories/python/>Python</a></li><li class=widget__item><a class=widget__link href=/categories/robot/>Robot</a></li></ul></div></div><div class="widget-taglist widget"><h4 class=widget__title>Tags</h4><div class=widget__content><a class="widget-taglist__link widget__link btn" href=/tags/algorithms/ title=Algorithms>Algorithms (2)</a>
 <a class="widget-taglist__link widget__link btn" href=/tags/humanoid/ title=Humanoid>Humanoid (2)</a>
